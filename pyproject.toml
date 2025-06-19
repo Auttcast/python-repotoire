@@ -1,0 +1,30 @@
+
+[build-system]
+requires = ['hatchling']
+build-backend = 'hatchling.build'
+
+[tool.setuptools.packages.find]
+exclude = ['testing*']
+
+[project]
+name = 'repotoire'
+version = '1.0.0'
+authors = [
+  { name='Brandon McCartney', email='auttcast@gmail.com' },
+]
+description = '__description__'
+readme = 'README.md'
+requires-python = '>=3.8'
+classifiers = [
+    'Programming Language :: Python :: 3',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+    'Topic :: Software Development :: Libraries',
+    'Topic :: Utilities'
+]
+
+license = 'AGPL-3.0-or-later'
+license-files = ['LICENSE.txt']
+
+[project.urls]
+Homepage = 'https://github.com/Auttcast/repotoire'
+Issues = 'https://github.com/Auttcast/repotoire/issues'
