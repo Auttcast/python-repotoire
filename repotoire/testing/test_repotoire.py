@@ -1,26 +1,43 @@
+from dataclasses import dataclass
+from datetime import datetime
+import sqlite3
 from ..repotoire import SqliteRepotoire, Entity
 
-class TestEntity(Entity):
-    name:str = None
-    data:int = None
+def test_sqlite_repotoire_create():
 
-class TestRepo(SqliteRepotoire):
-    def __init__(self, connection_string):
-        super().connect(connection_string)
-        self.my_entity = super().register(lambda: TestEntity())
+    #arrange
 
-def test_sqlite_repotoire():
+    @dataclass
+    class TestEntity(Entity):
+        name:str = None
+        data_int:int = None
+        data_float:float = None
+        data_datetime:datetime = None
+
+    class TestRepo(SqliteRepotoire):
+        def __init__(self, connection_string):
+            super().connect(connection_string)
+            self.my_entity = super().register(lambda: TestEntity())
 
     repo = TestRepo(":memory:")
-    test = TestEntity()
 
-    test.name = "test"
-    test.data = 123
-    repo.my_entity.add(test)
+    #act
 
-    test.name = "test2"
-    test.data = 456
-    repo.my_entity.add(test)
+    repo.my_entity.add(TestEntity(name="test1", data_int=123))
+    repo.my_entity.add(TestEntity(name="test2"))
 
-    for x in repo.my_entity.get_all():
-        print(f"VALUE: {x.name}")
+    #assert
+    native_result = repo.connection.execute("SELECT rowid, name, data_int, data_float, data_datetime FROM TestEntity").fetchall()
+
+    assert native_result[0][0] == 1
+    assert native_result[0][1] == 'test1'
+    assert native_result[0][2] == 123
+    
+    assert native_result[1][0] == 2
+    assert native_result[1][1] == 'test2'
+    assert native_result[1][2] == None
+    
+
+
+def test_sqlite_repotoire_query():
+    pass

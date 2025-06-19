@@ -3,6 +3,7 @@ import sqlite3
 from abc import ABC
 from typing import Callable, Iterable
 from auttcomp.extensions import Api as f
+from .expression_builder import Expression, ExpressionBuilder
 
 class Entity:
     rowid:int
@@ -22,7 +23,7 @@ class SqliteRepotoire(ABC):
 
     def __assert_table_shape(self, cursor:sqlite3.Cursor, table_name:str, properties:list[str]):
         query = f"PRAGMA table_info([{table_name}])"
-        info = list(map(lambda x: x[1], cursor.execute(query).fetchall()))
+        info = [x[1] for x in cursor.execute(query).fetchall()]
         assert info == properties
 
     def register[T](self, entity_factory:Callable[[], T]):
@@ -34,15 +35,15 @@ class SqliteRepotoire(ABC):
         cursor = self.connection.cursor()
 
         if not self.__table_exists(cursor, table_name):
-            query = f"CREATE TABLE {table_name} ({SqliteRepotoire.escaped_props_str(properties)})"
-            cursor.execute(query)
+            cursor.execute(f"CREATE TABLE [{table_name}] ({SqliteRepotoire.escaped_props_str(properties)})")
         else:
             self.__assert_table_shape(cursor, table_name, properties)
 
         return SqliteRepoApi[T](table_name, properties, entity_factory, cursor)
     
+    @staticmethod
     def escaped_props_str(props):
-        return ",".join(list(map(lambda x: f"[{x}]", props)))
+        return ",".join([f"[{x}]" for x in props])
 
 class SqliteRepoApi[T]:
     def __init__(self, table_name:str, properties:list[str], entity_factory:Callable[[], T], cursor:sqlite3.Cursor):
@@ -51,23 +52,20 @@ class SqliteRepoApi[T]:
         self.entity_factory:Callable[[], T] = entity_factory
         self.cursor:sqlite3.Cursor = cursor
 
-    def __str_adapter(self, prop):
-        if type(prop) is str:
-            return f"'{prop}'"
-        elif type(prop) is type(None):
+    def __null_adapter(self, prop):
+        if type(prop) is type(None):
             return "NULL"
         else:
-            return f"{prop}"
-
-    def __get_ordinal_prop_values(self, entity:T, properties:list[str]):
-        str_props = list(map(lambda x: self.__str_adapter(getattr(entity, x)), properties))
-        return ",".join(str_props)
+            return prop
 
     def add(self, entity:T):
-        query = f"INSERT INTO [{self.table_name}] ({SqliteRepotoire.escaped_props_str(self.properties)}) VALUES ({self.__get_ordinal_prop_values(entity, self.properties)})"
-        self.cursor.execute(query)
+        props = SqliteRepotoire.escaped_props_str(self.properties)
+        prop_params = ",".join(["?" for _ in range(0, len(self.properties))])
+        query = f"INSERT INTO [{self.table_name}] ({props}) VALUES ({prop_params})"
+        self.cursor.execute(query, [self.__null_adapter(getattr(entity, x)) for x in self.properties])
 
     def __to_entity(self, values) -> T:
+        print(f"VALUES: {type(values)}")
         obj:T = self.entity_factory()
         setattr(obj, 'rowid', values[0])
 
@@ -75,6 +73,7 @@ class SqliteRepoApi[T]:
         for p in self.properties:
             setattr(obj, p, values[count])
             count += 1
+
         return obj
 
     def get_all(self) -> Iterable[T]:
@@ -83,3 +82,5 @@ class SqliteRepoApi[T]:
         while result := cur.fetchone():
             yield self.__to_entity(result)
     
+    def query(expression:Expression = None) -> Iterable[T]:
+        pass
