@@ -1,25 +1,17 @@
-from ..repotoire import Repotoire, Entity
+from ..repotoire import SqliteRepotoire, Entity
 
 class TestEntity(Entity):
-    name = None
-    data = None
+    name:str = None
+    data:int = None
 
-class MyRepo(Repotoire):
+class TestRepo(SqliteRepotoire):
     def __init__(self, connection_string):
         super().connect(connection_string)
         self.my_entity = super().register(lambda: TestEntity())
 
-def test_sqlite():
+def test_sqlite_repotoire():
 
-    '''
-    TODO
-    -is queryable possible with dis?
-    -must validate with test suite and only support minimal operations
-    -anticipage verion-specific mods
-    '''
-
-    repo = MyRepo(":memory:")
-
+    repo = TestRepo(":memory:")
     test = TestEntity()
 
     test.name = "test"
@@ -29,3 +21,6 @@ def test_sqlite():
     test.name = "test2"
     test.data = 456
     repo.my_entity.add(test)
+
+    for x in repo.my_entity.get_all():
+        print(f"VALUE: {x.name}")
