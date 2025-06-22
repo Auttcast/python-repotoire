@@ -1,28 +1,25 @@
 import dis
 import sqlite3
 from datetime import datetime, UTC
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Callable, Iterable
 from auttcomp.extensions import Api as f
 from .expression_builder import Expression, ExpressionBuilder
 
 '''
 TODO
--create with types
+-entity will only support native types
+--should assert types thru api (IE don't let something like datetime repr save as str)
 -indexing
+--bulk inserts
 
 TYPE MAP
 None -> NULL
 int -> INTEGER
 float -> REAL
 str -> TEXT
-bytes -> BLOG
+bytes -> BLOB
 
-
-date:
-store as FLOAT_DATETIME
-adapter: datetime.now(UTC).timestamp()
-converter: datetime.fromtimestamp
 '''
 
 class Entity:
@@ -43,8 +40,6 @@ class SqliteRepotoire(ABC):
 
     def connect(self, connection_string):
         self.connection = sqlite3.connect(connection_string, detect_types=sqlite3.PARSE_DECLTYPES)
-        sqlite3.register_adapter(datetime, SqliteRepotoire.adapt_datetime_to_float)
-        sqlite3.register_converter("FLOAT_TIMESTAMP", SqliteRepotoire.convert_float_to_datetime)
 
     def __table_exists(self, cursor: sqlite3.Cursor, table_name:str):
         query = f"SELECT count(*) FROM sqlite_master WHERE [type]='table' and [name]='{table_name}'"
@@ -76,7 +71,6 @@ class SqliteRepotoire(ABC):
         return ",".join([f"[{x}]" for x in props])
 
     def escaped_typed_props_str[T](self, entity:T, props:list[str]) -> str:
-        print(f"TEST123: {props} {type(getattr(entity, props[1]))}")
         return ",".join([f"[{x}]" for x in props])
 
 class SqliteRepoApi[T]:
