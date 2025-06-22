@@ -94,11 +94,9 @@ class SqliteRepoApi[T]:
 
         return obj
 
-    def get_all(self) -> Iterable[T]:
+    def query(self) -> Iterable[T]:
         query = f"SELECT rowid, * FROM [{self.table_name}]"
         cur = self.cursor.execute(query)
         while result := cur.fetchone():
             yield self.__to_entity(result)
-    
-    def query(expression:Expression = None) -> Iterable[T]:
-        pass
+        

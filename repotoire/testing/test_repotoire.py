@@ -42,14 +42,44 @@ def test_sqlite_repotoire_create():
     assert native_result[1][3] == 1.02
     assert native_result[1][4] == b"bytes2"
     
-def test_sqlite_repotoire_query():
-    pass
+def test_sqlite_repotoire_read_all():
+    
+    #arrange
 
-def xtest_foo():
-    con = sqlite3.connect(":memory:")
-    con.execute(f"CREATE TABLE Test (foo, bar)")
-    con.execute("INSERT INTO Test (foo, bar) VALUES (NULL, 123)")
-    result = con.execute("SELECT * FROM Test").fetchall()
-    print(result)
+    @dataclass
+    class TestEntity(Entity):
+        name:str = None
+        data_int:int = None
+
+    class TestRepo(SqliteRepotoire):
+        def __init__(self, connection_string):
+            super().connect(connection_string)
+            self.my_entity = super().register(lambda: TestEntity())
+
+    repo = TestRepo(":memory:")
+
+    #act
+    
+    repo.my_entity.add(TestEntity(name="test1", data_int=123))
+    repo.my_entity.add(TestEntity(name="test2", data_int=456))
+    
+    #assert
+    q = repo.my_entity.query()
+    actual1 = next(q)
+    actual2 = next(q)
+
+    try:
+        next(q)
+        raise AssertionError("expected to throw")
+    except StopIteration:
+        pass
+
+    assert actual1.rowid == 1 #rowid
+    assert actual1.name == 'test1' #name
+    assert actual1.data_int == 123 #data_int
+    
+    assert actual2.rowid == 2
+    assert actual2.name == 'test2'
+    assert actual2.data_int == 456
 
 
