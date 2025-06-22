@@ -1,7 +1,8 @@
 import dis
+from typing import Callable
 
-class Expression:
+class Expression[T]:
     pass
 
-class ExpressionBuilder:
+class ExpressionBuilder[T]:
     pass

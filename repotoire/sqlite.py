@@ -1,10 +1,10 @@
 import dis
 import sqlite3
 from datetime import datetime, UTC
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Callable, Iterable
 from auttcomp.extensions import Api as f
-from .expression_builder import Expression, ExpressionBuilder
+from .expression_builder import ExpressionBuilder
 
 '''
 TODO
@@ -42,8 +42,9 @@ class SqliteRepotoire(ABC):
         self.connection = sqlite3.connect(connection_string, detect_types=sqlite3.PARSE_DECLTYPES)
 
     def __table_exists(self, cursor: sqlite3.Cursor, table_name:str):
-        query = f"SELECT count(*) FROM sqlite_master WHERE [type]='table' and [name]='{table_name}'"
-        (result,) = cursor.execute(query).fetchone()
+        query = f"SELECT count(*) FROM sqlite_master WHERE [type]='table' and [name]=?"
+        #print(f"table_name:::: {table_name}")
+        (result,) = cursor.execute(query, [table_name]).fetchone()
         return result == 1
 
     def __assert_table_shape(self, cursor:sqlite3.Cursor, table_name:str, properties:list[str]):
@@ -60,12 +61,16 @@ class SqliteRepotoire(ABC):
         cursor = self.connection.cursor()
 
         if not self.__table_exists(cursor, table_name):
-            cursor.execute(f"CREATE TABLE [{table_name}] ({SqliteRepotoire.escaped_props_str(properties)})")
+            cursor.execute(f"CREATE TABLE [{table_name}] ({self.escaped_props_str(properties)})")
         else:
             self.__assert_table_shape(cursor, table_name, properties)
 
         return SqliteRepoApi[T](table_name, properties, entity_factory, cursor)
     
+    @staticmethod
+    def get_places(props):
+        return ",".join(["?" for _ in range(0, len(props))])
+
     @staticmethod
     def escaped_props_str(props):
         return ",".join([f"[{x}]" for x in props])
@@ -79,8 +84,8 @@ class SqliteRepoApi[T]:
 
     def add(self, entity:T):
         props = SqliteRepotoire.escaped_props_str(self.properties)
-        prop_params = ",".join(["?" for _ in range(0, len(self.properties))])
-        query = f"INSERT INTO [{self.table_name}] ({props}) VALUES ({prop_params})"
+        places = ",".join(["?" for _ in range(0, len(self.properties))])
+        query = f"INSERT INTO [{self.table_name}] ({props}) VALUES ({places})"
         self.cursor.execute(query, [getattr(entity, x) for x in self.properties])
 
     def __to_entity(self, values) -> T:
@@ -94,9 +99,10 @@ class SqliteRepoApi[T]:
 
         return obj
 
-    def query(self) -> Iterable[T]:
-        query = f"SELECT rowid, * FROM [{self.table_name}]"
+    def query(self, expression_builder:ExpressionBuilder[T] = None) -> Iterable[T]:
+
+        query = f"SELECT rowid, * FROM [{self.table_name}]" if expression_builder is None else expression_builder()
+
         cur = self.cursor.execute(query)
         while result := cur.fetchone():
             yield self.__to_entity(result)
-        

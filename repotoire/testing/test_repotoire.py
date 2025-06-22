@@ -82,4 +82,46 @@ def test_sqlite_repotoire_read_all():
     assert actual2.name == 'test2'
     assert actual2.data_int == 456
 
+def test_assert_table_shape():
+    #db = "file:mem1?mode=memory&cache=shared"
+    pass
+
+def xtest_sqlite_repotoire_read_filter():
+    
+    #arrange
+
+    @dataclass
+    class TestEntity(Entity):
+        name:str = None
+        data_int:int = None
+
+    class TestRepo(SqliteRepotoire):
+        def __init__(self, connection_string):
+            super().connect(connection_string)
+            self.my_entity = super().register(lambda: TestEntity())
+
+    repo = TestRepo(":memory:")
+
+    #act
+    
+    repo.my_entity.add(TestEntity(name="test1", data_int=123))
+    repo.my_entity.add(TestEntity(name="test2", data_int=456))
+    
+    #assert
+    q = repo.my_entity.query(lambda f: (
+        f.filter(lambda x: x.rowid < 2)
+    ))
+
+    actual1 = next(q)
+
+    try:
+        next(q)
+        raise AssertionError("expected to throw")
+    except StopIteration:
+        pass
+
+    assert actual1.rowid == 1 #rowid
+    assert actual1.name == 'test1' #name
+    assert actual1.data_int == 123 #data_int
+    
 
