@@ -9,7 +9,7 @@ from .expression_builder import Expression, ExpressionBuilder
 '''
 TODO
 -entity will only support native types
---should assert types thru api (IE don't let something like datetime repr save as str)
+--should assert types thru api (IE don't let something like datetime repr save as str, require user to be explicit)
 -indexing
 --bulk inserts
 
@@ -60,7 +60,7 @@ class SqliteRepotoire(ABC):
         cursor = self.connection.cursor()
 
         if not self.__table_exists(cursor, table_name):
-            cursor.execute(f"CREATE TABLE [{table_name}] ({self.escaped_typed_props_str(entity, properties)})")
+            cursor.execute(f"CREATE TABLE [{table_name}] ({SqliteRepotoire.escaped_props_str(properties)})")
         else:
             self.__assert_table_shape(cursor, table_name, properties)
 
@@ -68,9 +68,6 @@ class SqliteRepotoire(ABC):
     
     @staticmethod
     def escaped_props_str(props):
-        return ",".join([f"[{x}]" for x in props])
-
-    def escaped_typed_props_str[T](self, entity:T, props:list[str]) -> str:
         return ",".join([f"[{x}]" for x in props])
 
 class SqliteRepoApi[T]:

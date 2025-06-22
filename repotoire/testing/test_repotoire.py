@@ -1,7 +1,7 @@
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
-from ..repotoire import SqliteRepotoire, Entity
+from ..sqlite import SqliteRepotoire, Entity
 
 def test_sqlite_repotoire_create():
 

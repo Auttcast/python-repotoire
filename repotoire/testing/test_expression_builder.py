@@ -4,5 +4,14 @@ TODO
 -spec requirements for expression using dis
 '''
 
+from dataclasses import dataclass
+from repotoire.sqlite import Entity
+
+
 def test_expression_builder():
-    pass
+
+    @dataclass
+    class TestEntity(Entity):
+        name:str = None
+        data_int:int = None
+        
