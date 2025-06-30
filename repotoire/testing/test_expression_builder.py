@@ -1,12 +1,5 @@
-
-'''
-TODO
--spec requirements for expression using dis
-'''
-
 from dataclasses import dataclass
 from repotoire.sqlite import Entity
-
 
 def test_expression_builder():
 

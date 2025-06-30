@@ -7,19 +7,22 @@ class Expression[T]:
         pass
         #list of ops?
         
-    def compile(self):
+    def compile(self) -> str:
+        '''
+        converts expression tree to str
+        '''
         pass
 
 class ExpressionApi[T]:
     
     @staticmethod
     @Composable
-    def filter[T,R](func: Callable[[T], R]) -> Callable[[Iterable[T]], Iterable[T]]:
+    def filter[R](func: Callable[[T], R]) -> Callable[[Expression[T]], Expression[T]]:
         
         @Composable
-        def partial_filter(data: Iterable[T]) -> Iterable[T]:
-            #todo dis
-            pass
+        def partial_filter(data: Expression[T]) -> Expression[T]:
+            #dis?
+            return Expression()
 
         return partial_filter
 

@@ -99,9 +99,9 @@ class SqliteRepoApi[T]:
 
         return obj
 
-    def query(self, expression_builder:Callable[[ExpressionApi], Expression] = None) -> Iterable[T]:
+    def query(self, expression_builder:Callable[[ExpressionApi[T]], Expression] = None) -> Iterable[T]:
 
-        query = f"SELECT rowid, * FROM [{self.table_name}]" if expression_builder is None else expression_builder(ExpressionApi()).compile()
+        query = f"SELECT rowid, * FROM [{self.table_name}]"# if expression_builder is None else expression_builder(ExpressionApi()).compile()
 
         cur = self.cursor.execute(query)
         while result := cur.fetchone():
