@@ -43,7 +43,6 @@ class SqliteRepotoire(ABC):
 
     def __table_exists(self, cursor: sqlite3.Cursor, table_name:str):
         query = f"SELECT count(*) FROM sqlite_master WHERE [type]='table' and [name]=?"
-        #print(f"table_name:::: {table_name}")
         (result,) = cursor.execute(query, [table_name]).fetchone()
         return result == 1
 
