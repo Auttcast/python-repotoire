@@ -4,7 +4,7 @@ from datetime import datetime, UTC
 from abc import ABC
 from typing import Callable, Iterable
 from auttcomp.extensions import Api as f
-from .expression_builder import ExpressionBuilder
+from .expression_builder import Expression, ExpressionApi, ExpressionBuilder
 
 '''
 TODO
@@ -99,9 +99,9 @@ class SqliteRepoApi[T]:
 
         return obj
 
-    def query(self, expression_builder:ExpressionBuilder[T] = None) -> Iterable[T]:
+    def query(self, expression_builder:Callable[[ExpressionApi], Expression] = None) -> Iterable[T]:
 
-        query = f"SELECT rowid, * FROM [{self.table_name}]" if expression_builder is None else expression_builder()
+        query = f"SELECT rowid, * FROM [{self.table_name}]" if expression_builder is None else expression_builder(ExpressionApi()).compile()
 
         cur = self.cursor.execute(query)
         while result := cur.fetchone():

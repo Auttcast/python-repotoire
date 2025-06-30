@@ -106,7 +106,7 @@ def test_assert_table_shape():
     except AssertionError:
         pass
 
-def xtest_sqlite_repotoire_read_filter():
+def test_sqlite_repotoire_read_filter():
     
     #arrange
 
