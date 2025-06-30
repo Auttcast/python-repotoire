@@ -17,7 +17,7 @@ class ExpressionApi[T]:
     
     @staticmethod
     @Composable
-    def filter[R](func: Callable[[T], R]) -> Callable[[Expression[T]], Expression[T]]:
+    def filter(func: Callable[[T], bool]) -> Callable[[Expression[T]], Expression[T]]:
         
         @Composable
         def partial_filter(data: Expression[T]) -> Expression[T]:
@@ -26,6 +26,3 @@ class ExpressionApi[T]:
 
         return partial_filter
 
-
-class ExpressionBuilder[T]:
-    pass

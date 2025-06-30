@@ -4,7 +4,7 @@ from datetime import datetime, UTC
 from abc import ABC
 from typing import Callable, Iterable
 from auttcomp.extensions import Api as f
-from .expression_builder import Expression, ExpressionApi, ExpressionBuilder
+from .expression_builder import Expression, ExpressionApi
 
 '''
 TODO
