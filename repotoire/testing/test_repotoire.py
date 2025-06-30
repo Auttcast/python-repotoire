@@ -83,8 +83,28 @@ def test_sqlite_repotoire_read_all():
     assert actual2.data_int == 456
 
 def test_assert_table_shape():
-    #db = "file:mem1?mode=memory&cache=shared"
-    pass
+    
+    @dataclass
+    class TestEntity(Entity):
+        name:str = None
+
+    class TestRepo(SqliteRepotoire):
+        def __init__(self):
+            super().connect("file:mem1?mode=memory&cache=shared", uri=True)
+            self.my_entity = super().register(lambda: TestEntity())
+
+    TestRepo()
+
+    @dataclass
+    class TestEntity(Entity):
+        name:str = None
+        extra_property:int = None
+
+    try:
+        TestRepo()
+        raise RuntimeError("expected exception")
+    except AssertionError:
+        pass
 
 def xtest_sqlite_repotoire_read_filter():
     

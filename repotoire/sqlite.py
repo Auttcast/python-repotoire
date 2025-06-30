@@ -38,8 +38,8 @@ class SqliteRepotoire(ABC):
     def convert_float_to_datetime(timestamp):
         return datetime.fromtimestamp(timestamp)
 
-    def connect(self, connection_string):
-        self.connection = sqlite3.connect(connection_string, detect_types=sqlite3.PARSE_DECLTYPES)
+    def connect(self, connection_string, uri=False):
+        self.connection = sqlite3.connect(connection_string, uri=uri)
 
     def __table_exists(self, cursor: sqlite3.Cursor, table_name:str):
         query = f"SELECT count(*) FROM sqlite_master WHERE [type]='table' and [name]=?"
