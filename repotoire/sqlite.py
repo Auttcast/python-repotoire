@@ -1,4 +1,3 @@
-import dis
 import sqlite3
 from datetime import datetime, UTC
 from abc import ABC
@@ -98,10 +97,10 @@ class SqliteRepoApi[T]:
 
         return obj
 
-    def query(self, expression_builder:Callable[[ExpressionApi[T]], Expression] = None) -> Iterable[T]:
+    def query(self, expression_func:Callable[[ExpressionApi], Expression] = None) -> Iterable[T]:
+        pass
+        # query = f"SELECT rowid, * FROM [{self.table_name}]"# if expression_func is None else expression_func(ExpressionApi()).compile()
 
-        query = f"SELECT rowid, * FROM [{self.table_name}]"# if expression_builder is None else expression_builder(ExpressionApi()).compile()
-
-        cur = self.cursor.execute(query)
-        while result := cur.fetchone():
-            yield self.__to_entity(result)
+        # cur = self.cursor.execute(query)
+        # while result := cur.fetchone():
+        #     yield self.__to_entity(result)

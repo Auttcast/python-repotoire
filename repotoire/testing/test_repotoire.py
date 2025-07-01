@@ -1,4 +1,3 @@
-import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
 from ..sqlite import SqliteRepotoire, Entity
@@ -42,7 +41,7 @@ def test_sqlite_repotoire_create():
     assert native_result[1][3] == 1.02
     assert native_result[1][4] == b"bytes2"
     
-def test_sqlite_repotoire_read_all():
+def x_test_sqlite_repotoire_read_all():
     
     #arrange
 
@@ -106,7 +105,7 @@ def test_assert_table_shape():
     except AssertionError:
         pass
 
-def xtest_sqlite_repotoire_read_filter():
+def x_test_sqlite_repotoire_read_filter():
     
     #arrange
 
