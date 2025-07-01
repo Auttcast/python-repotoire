@@ -1,7 +1,6 @@
-import dis
 from dataclasses import dataclass
 from repotoire.sqlite import Entity
-from ..expression_builder import Expression, ExpressionApi, ExpressionBuilder, ExpressionType
+from ..expression_builder import ExpressionApi, ExpressionApi, ExpressionBuilder
 
 def test_expression_builder():
 
@@ -11,7 +10,7 @@ def test_expression_builder():
         data_int:int = None
         
     api = ExpressionApi()
-    exp_start = Expression(func=ExpressionType.SELECT, bytecode=dis.Bytecode(lambda x: x), shape=TestEntity())
-    exp = api.filter(lambda x: x.rowid == 1)([exp_start])
-    query = ExpressionBuilder(exp).build()
+    exp_builder = ExpressionBuilder(TestEntity())
+    api.filter[TestEntity](lambda x: x.rowid == 1)(exp_builder)
+    query = exp_builder.build()
     assert query == "SELECT rowid, * FROM [TestEntity] WHERE rowid == 1"
