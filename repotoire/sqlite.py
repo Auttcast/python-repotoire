@@ -1,9 +1,13 @@
+from dataclasses import dataclass
+import dis
+from enum import Enum
 import sqlite3
 from datetime import datetime, UTC
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Callable, Iterable
 from auttcomp.extensions import Api as f
-from .expression_builder import Expression, ExpressionApi
+from auttcomp.composable import Composable
+from collections import namedtuple
 
 '''
 TODO
@@ -73,6 +77,17 @@ class SqliteRepotoire(ABC):
     def escaped_props_str(props):
         return ",".join([f"[{x}]" for x in props])
 
+@dataclass
+class Expression:
+    func=None
+    bytecode=None
+
+class Queryable[T](ABC):
+
+    @abstractmethod
+    def add(exp:Expression):
+        pass
+
 class SqliteRepoApi[T]:
     def __init__(self, table_name:str, properties:list[str], entity_factory:Callable[[], T], cursor:sqlite3.Cursor):
         self.table_name:str = table_name
@@ -86,7 +101,7 @@ class SqliteRepoApi[T]:
         query = f"INSERT INTO [{self.table_name}] ({props}) VALUES ({places})"
         self.cursor.execute(query, [getattr(entity, x) for x in self.properties])
 
-    def __to_entity(self, values) -> T:
+    def _to_entity(self, values) -> T:
         obj:T = self.entity_factory()
         setattr(obj, 'rowid', values[0])
 
@@ -97,10 +112,40 @@ class SqliteRepoApi[T]:
 
         return obj
 
-    def query(self, expression_func:Callable[[ExpressionApi], Expression] = None) -> Iterable[T]:
-        pass
-        # query = f"SELECT rowid, * FROM [{self.table_name}]"# if expression_func is None else expression_func(ExpressionApi()).compile()
+    def queryable(self) -> Queryable[T]:
+        #return SqliteQueryable(self)
+        return Composable(SqliteQueryable)
 
-        # cur = self.cursor.execute(query)
-        # while result := cur.fetchone():
-        #     yield self.__to_entity(result)
+class SqliteQueryable[T](Queryable[T]):
+
+    def __init__(self):
+        #Composable.__init__(self, func)
+        # api.cursor.row_factory = self.row_factory
+        # Composable.__init__(self, lambda: api.cursor.execute("select rowid, * from EntityA"))
+        # self.api = api
+        pass
+    
+    def row_factory(self, cursor, row):
+        return self.api._to_entity(row)
+
+    def add(exp:Expression):
+        pass
+
+class ExpressionType(Enum):
+    SELECT=0,
+    WHERE=1,
+    # aggregate
+
+class ExpressionApi:
+
+    @staticmethod
+    @Composable
+    def map[T, R](func:Callable[[T], R]) -> Callable[[Queryable[T]], Queryable[R]]:
+        
+        bytecode = list(dis.Bytecode(func))
+
+        def partial_map(source:Queryable[T]) -> Queryable[R]:
+            #source.add(Expression(func=ExpressionType.SELECT, bytecode=bytecode))
+            pass
+
+        return partial_map

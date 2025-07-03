@@ -41,106 +41,30 @@ def test_sqlite_repotoire_create():
     assert native_result[1][3] == 1.02
     assert native_result[1][4] == b"bytes2"
     
-def x_test_sqlite_repotoire_read_all():
-    
-    #arrange
-
-    @dataclass
-    class TestEntity(Entity):
-        name:str = None
-        data_int:int = None
-
-    class TestRepo(SqliteRepotoire):
-        def __init__(self, connection_string):
-            super().connect(connection_string)
-            self.my_entity = super().register(lambda: TestEntity())
-
-    repo = TestRepo(":memory:")
-
-    #act
-    
-    repo.my_entity.add(TestEntity(name="test1", data_int=123))
-    repo.my_entity.add(TestEntity(name="test2", data_int=456))
-    
-    #assert
-    q = repo.my_entity.query()
-    actual1 = next(q)
-    actual2 = next(q)
-
-    try:
-        next(q)
-        raise AssertionError("expected to throw")
-    except StopIteration:
-        pass
-
-    assert actual1.rowid == 1 #rowid
-    assert actual1.name == 'test1' #name
-    assert actual1.data_int == 123 #data_int
-    
-    assert actual2.rowid == 2
-    assert actual2.name == 'test2'
-    assert actual2.data_int == 456
-
 def test_assert_table_shape():
-    
-    @dataclass
-    class TestEntity(Entity):
-        name:str = None
-
-    class TestRepo(SqliteRepotoire):
-        def __init__(self):
-            super().connect("file:mem1?mode=memory&cache=shared", uri=True)
-            self.my_entity = super().register(lambda: TestEntity())
-
-    TestRepo()
-
-    @dataclass
-    class TestEntity(Entity):
-        name:str = None
-        extra_property:int = None
-
+    repo = None
     try:
-        TestRepo()
-        raise RuntimeError("expected exception")
-    except AssertionError:
-        pass
+            
+        @dataclass
+        class TestEntity(Entity):
+            name:str = None
 
-def x_test_sqlite_repotoire_read_filter():
-    
-    #arrange
+        class TestRepo(SqliteRepotoire):
+            def __init__(self):
+                super().connect("file:mem1?mode=memory&cache=shared", uri=True)
+                self.my_entity = super().register(lambda: TestEntity())
 
-    @dataclass
-    class TestEntity(Entity):
-        name:str = None
-        data_int:int = None
+        repo = TestRepo()
 
-    class TestRepo(SqliteRepotoire):
-        def __init__(self, connection_string):
-            super().connect(connection_string)
-            self.my_entity = super().register(lambda: TestEntity())
+        @dataclass
+        class TestEntity(Entity):
+            name:str = None
+            extra_property:int = None
 
-    repo = TestRepo(":memory:")
-
-    #act
-    
-    repo.my_entity.add(TestEntity(name="test1", data_int=123))
-    repo.my_entity.add(TestEntity(name="test2", data_int=456))
-    
-    #assert
-    q = repo.my_entity.query(lambda f: (
-        f.filter(lambda x: x.rowid < 2)
-    ))
-
-    actual1 = next(q)
-
-    try:
-        next(q)
-        raise AssertionError("expected to throw")
-    except StopIteration:
-        pass
-
-    assert actual1.rowid == 1 #rowid
-    assert actual1.name == 'test1' #name
-    assert actual1.data_int == 123 #data_int
-    
-
+        try:
+            TestRepo()
+            raise RuntimeError("expected exception")
+        except AssertionError:
+            pass
+    finally:
+        repo.connection.close()
