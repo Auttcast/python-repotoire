@@ -1,8 +1,7 @@
 from dataclasses import dataclass
-from typing import Callable, Iterable
-from abc import ABC, abstractmethod
-#from auttcomp.extensions import Api as f
-from ..sqlite import Entity, SqliteRepotoire, ExpressionApi as f
+from auttcomp.extensions import Api
+from auttcomp.composable import Composable
+from ..sqlite import Entity, SqliteRepoApi, SqliteRepotoire, ExpressionApi as f
 
 '''
 from <source>
@@ -39,10 +38,12 @@ def test_queryable():
 
     repo.my_entity.add(EntityA(name="foo1", data=123))
     repo.my_entity.add(EntityA(name="foo2", data=456))
-    repo.my_entity.add(EntityA(name="foo3", data=789))
-    repo.my_entity.add(EntityA(*("test", 111)))
     
-    #d2 = repo.my_entity.queryable() | f.map(lambda x: x.name) | list
-    d2 = repo.my_entity.queryable() | f.map(lambda x: x.name)
+    #cq = Composable(SqliteRepoApi[EntityA].queryable) & repo.my_entity
+
+    comp = repo.my_entity.queryable() | f.map(lambda x: x.name) | f.list
+
+    actual = comp()
+
+    assert actual == ["foo1", "foo2"]
     
-    #print(d2())

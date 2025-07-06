@@ -4,7 +4,7 @@ from enum import Enum
 import sqlite3
 from datetime import datetime, UTC
 from abc import ABC, abstractmethod
-from typing import Callable, Iterable
+from typing import Any, Callable, Iterable
 from auttcomp.extensions import Api as f
 from auttcomp.composable import Composable
 from collections import namedtuple
@@ -78,9 +78,10 @@ class SqliteRepotoire(ABC):
         return ",".join([f"[{x}]" for x in props])
 
 @dataclass
-class Expression:
-    func=None
-    bytecode=None
+class Expression[T]:
+    func:Callable[[], T]=None
+    source:sqlite3.Cursor=None
+    bytecode:list[dis.Instruction]=None
 
 class Queryable[T](ABC):
 
@@ -113,23 +114,29 @@ class SqliteRepoApi[T]:
         return obj
 
     def queryable(self) -> Queryable[T]:
-        #return SqliteQueryable(self)
-        return Composable(SqliteQueryable)
+        return SqliteQueryable.from_table(self)
 
-class SqliteQueryable[T](Queryable[T]):
+class SqliteQueryable[T](Queryable[T], Composable):
 
-    def __init__(self):
-        #Composable.__init__(self, func)
-        # api.cursor.row_factory = self.row_factory
-        # Composable.__init__(self, lambda: api.cursor.execute("select rowid, * from EntityA"))
-        # self.api = api
-        pass
+    def __init__(self, expressions:list[Expression], api:SqliteRepoApi[T]):
+        Composable.__init__(self, lambda: self.__call__())
+        self.expressions = expressions
+        self.api = api
     
-    def row_factory(self, cursor, row):
-        return self.api._to_entity(row)
+    def from_table(api:SqliteRepoApi[T]):
+        return SqliteQueryable(api=api, expressions=[Expression(func=api.table_name, source=api.cursor)])
+    
+    def add(self, exp:Expression):
+        return SqliteQueryable(api=self.api, expressions=[*self.expressions, exp])
+    
+    @property
+    def table_name(self):
+        return self.expressions[0].func
 
-    def add(exp:Expression):
-        pass
+    def __call__(self) -> sqlite3.Cursor:
+        cur = self.api.cursor.execute(f"SELECT rowid, * FROM {self.table_name}")
+        return cur
+
 
 class ExpressionType(Enum):
     SELECT=0,
@@ -144,8 +151,12 @@ class ExpressionApi:
         
         bytecode = list(dis.Bytecode(func))
 
+        @Composable
         def partial_map(source:Queryable[T]) -> Queryable[R]:
-            #source.add(Expression(func=ExpressionType.SELECT, bytecode=bytecode))
-            pass
+            source.add(Expression(func=ExpressionType.SELECT, bytecode=bytecode))
+            return source
 
         return partial_map
+
+    def list[T](source:Queryable[T]) -> list[T]:
+        return list(source().fetchall())
