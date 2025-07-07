@@ -116,10 +116,10 @@ class SqliteRepoApi[T]:
     def queryable(self) -> Queryable[T]:
         return SqliteQueryable.from_table(self)
 
-class SqliteQueryable[T](Queryable[T], Composable):
+class SqliteQueryable[T](Queryable[T], Composable[T, T]):
 
     def __init__(self, expressions:list[Expression], api:SqliteRepoApi[T]):
-        Composable.__init__(self, lambda: self.__call__())
+        Composable.__init__(self, lambda: self)
         self.expressions = expressions
         self.api = api
     

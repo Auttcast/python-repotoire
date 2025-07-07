@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from auttcomp.extensions import Api
 from auttcomp.composable import Composable
-from ..sqlite import Entity, SqliteRepoApi, SqliteRepotoire, ExpressionApi as f
+from ..sqlite import Entity, SqliteRepoApi, SqliteRepotoire, ExpressionApi as q
 
 '''
 from <source>
@@ -39,9 +39,7 @@ def test_queryable():
     repo.my_entity.add(EntityA(name="foo1", data=123))
     repo.my_entity.add(EntityA(name="foo2", data=456))
     
-    #cq = Composable(SqliteRepoApi[EntityA].queryable) & repo.my_entity
-
-    comp = repo.my_entity.queryable() | f.map(lambda x: x.name) | f.list
+    comp = repo.my_entity.queryable() | q.map(lambda x: x.name) | q.list
 
     actual = comp()
 
