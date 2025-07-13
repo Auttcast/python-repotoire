@@ -190,3 +190,36 @@ def test_queryable_filter2_or():
     assert e2.rowid == 3
     assert e2.name == "foo3"
     assert e2.data == 789
+
+def test_queryable_iter():
+
+    @dataclass
+    class EntityA(Entity):
+        name:str = None
+        data:int = None
+    
+    class TestRepo(SqliteRepotoire):
+        def __init__(self, connection_string):
+            super().connect(connection_string)
+            self.my_entity = super().register(EntityA)
+
+    repo = TestRepo(":memory:")
+
+    repo.my_entity.add(EntityA(name="foo1", data=123))
+    repo.my_entity.add(EntityA(name="foo2", data=456))
+    repo.my_entity.add(EntityA(name="foo3", data=789))
+    
+    comp = repo.my_entity.queryable() | q.filter(lambda x: x.data == 123 or x.data == 789)
+    
+    actual = iter(comp())
+
+    e1 = next(actual)
+    e2 = next(actual)
+
+    assert e1.rowid == 1
+    assert e1.name == "foo1"
+    assert e1.data == 123
+
+    assert e2.rowid == 3
+    assert e2.name == "foo3"
+    assert e2.data == 789

@@ -11,12 +11,6 @@ from auttcomp.composable import Composable
 from collections import namedtuple
 
 '''
-TODO
--entity will only support native types
---should assert types thru api (IE don't let something like datetime repr save as str, require user to be explicit)
--indexing
---bulk inserts
-
 TYPE MAP
 None -> NULL
 int -> INTEGER
@@ -150,11 +144,11 @@ class QueryBuilder:
             )
         
     def where(self, inst:list[dis.Instruction]):
-        print(f"WHERE:::")
-        pprint(list(map(lambda x: (x.opname, x.opcode, x.argval), inst)))
+        #print(f"WHERE:::")
+        #pprint(list(map(lambda x: (x.opname, x.opcode, x.argval), inst)))
 
         registers = []
-
+        
         for i in inst:
             if i.opcode in [149, 85]: continue
 
@@ -204,12 +198,13 @@ FROM [{self.source}]
         print(f"QUERY: {query}")
         return query
 
-class SqliteQueryable[T](Queryable[T]):
+class SqliteQueryable[T](Queryable[T], Iterable):
 
     def __init__(self, expressions:list[Expression], api:SqliteRepoApi[T]):
         Composable.__init__(self, lambda: self)
         self.expressions = expressions
         self.api = api
+        self.iter = None
     
     def from_table(api:SqliteRepoApi[T]):
         return SqliteQueryable(api=api, expressions=[])
@@ -228,6 +223,13 @@ class SqliteQueryable[T](Queryable[T]):
             return self.api._to_entity(row)
         return partial_entity_row_factory
 
+    def __iter__(self):
+        self.iter = self()
+        return self
+
+    def __next__(self):
+        return next(self.iter)
+
     def __call__(self) -> sqlite3.Cursor:
         
         builder = QueryBuilder(source=self.api.table_name, shape=self.api.properties)
@@ -241,10 +243,8 @@ class SqliteQueryable[T](Queryable[T]):
             elif e.func == ExpressionType.WHERE:
                 builder.where(e.bytecode)
         
-        cur = self.api.cursor.execute(builder.build())
-        
-        return cur
-
+        cursor = self.api.cursor.execute(builder.build()) #cursor
+        return cursor
 
 class ExpressionType(Enum):
     SELECT=0,
@@ -280,5 +280,5 @@ class ExpressionApi:
     @staticmethod
     @Composable
     def list[T](source:Queryable[T]) -> list[T]:
-        return list(source().fetchall())
+        return list(source())
     
