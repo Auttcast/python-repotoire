@@ -1,10 +1,11 @@
 from dataclasses import dataclass
 import dis
 from enum import Enum
+from pprint import pprint
 import sqlite3
 from datetime import datetime, UTC
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Self
 from auttcomp.extensions import Api as f
 from auttcomp.composable import Composable
 from collections import namedtuple
@@ -80,10 +81,9 @@ class SqliteRepotoire(ABC):
 @dataclass
 class Expression[T]:
     func:Callable[[], T]=None
-    source:sqlite3.Cursor=None
     bytecode:list[dis.Instruction]=None
 
-class Queryable[T](ABC):
+class Queryable[T](ABC, Composable[None, T]):
 
     @abstractmethod
     def add(exp:Expression):
@@ -116,7 +116,90 @@ class SqliteRepoApi[T]:
     def queryable(self) -> Queryable[T]:
         return SqliteQueryable.from_table(self)
 
-class SqliteQueryable[T](Queryable[T], Composable[T, T]):
+class DisPosition:
+
+    def __init__(self, inst):
+        self.registeres = []
+        self.inst = list(map(lambda x: (x.opname, x.opcode, x.argval), inst))
+        pprint(self.inst)
+        first = self.inst.pop()
+        assert first[1] == 36
+        #resume 149
+        #return_value 36
+
+    def load_fast(self) -> Self:
+        #85
+        return self
+
+    def load_attr(self) -> Self:
+        #82
+        return self
+
+class QueryBuilder:
+    def __init__(self, source:str, shape:list[str]):
+        self.source = source
+        self.shape = ['rowid', *shape]
+        self.filters = []
+
+    def select(self, inst:list[dis.Instruction]):
+        self.shape = list(
+            map(
+                lambda x: x.argval, filter(
+                    lambda x: x[1] == 82, inst)
+                    )
+            )
+        
+    def where(self, inst:list[dis.Instruction]):
+        pprint(f"INST: {list(map(lambda x: (x.opname, x.opcode, x.argval), inst))}")
+
+        registers = []
+
+        for i in inst:
+            if i.opcode in [149, 85]: continue
+
+            if i.opcode in [82, 83]:
+                registers.append(i.argval)
+
+            if i.opcode in [58]:
+                right = registers.pop()
+                left = registers.pop()
+                registers.append(f"{left} {i.argval} {right}")
+
+            if i.opcode == 36:
+                assert len(registers) == 1
+                self.filters.append(registers[0])
+                return
+
+        raise SyntaxError("opcode 36 was not found")
+
+    def group(self):
+        pass
+
+    def order(self):
+        pass
+
+    def join(self):
+        pass
+
+    def build_where(self):
+
+        if len(self.filters) == 0:
+            return ""
+        
+        clause = f"WHERE {self.filters[0]}"
+        
+        return clause
+
+    def build(self) -> str:
+        query = f"""
+SELECT {', '.join(self.shape)} 
+FROM [{self.source}]
+{self.build_where()}
+        """
+        print(f"QUERY: {query}")
+        return query
+
+class SqliteQueryable[T](Queryable[T]):
 
     def __init__(self, expressions:list[Expression], api:SqliteRepoApi[T]):
         Composable.__init__(self, lambda: self)
@@ -124,17 +207,37 @@ class SqliteQueryable[T](Queryable[T], Composable[T, T]):
         self.api = api
     
     def from_table(api:SqliteRepoApi[T]):
-        return SqliteQueryable(api=api, expressions=[Expression(func=api.table_name, source=api.cursor)])
+        return SqliteQueryable(api=api, expressions=[])
     
     def add(self, exp:Expression):
         return SqliteQueryable(api=self.api, expressions=[*self.expressions, exp])
-    
-    @property
-    def table_name(self):
-        return self.expressions[0].func
+
+    @staticmethod
+    def tuple_row_factory(_, row):
+        if type(row) is tuple and len(row) == 1:
+            return row[0]
+        return row
+
+    def entity_row_factory(self):
+        def partial_entity_row_factory(_, row):
+            return self.api._to_entity(row)
+        return partial_entity_row_factory
 
     def __call__(self) -> sqlite3.Cursor:
-        cur = self.api.cursor.execute(f"SELECT rowid, * FROM {self.table_name}")
+        
+        builder = QueryBuilder(source=self.api.table_name, shape=self.api.properties)
+
+        self.api.cursor.row_factory = self.entity_row_factory()
+
+        for e in self.expressions:
+            if e.func == ExpressionType.SELECT:
+                builder.select(e.bytecode)
+                self.api.cursor.row_factory = SqliteQueryable.tuple_row_factory
+            elif e.func == ExpressionType.WHERE:
+                builder.where(e.bytecode)
+        
+        cur = self.api.cursor.execute(builder.build())
+        
         return cur
 
 
@@ -153,10 +256,24 @@ class ExpressionApi:
 
         @Composable
         def partial_map(source:Queryable[T]) -> Queryable[R]:
-            source.add(Expression(func=ExpressionType.SELECT, bytecode=bytecode))
-            return source
+            return source.add(Expression(func=ExpressionType.SELECT, bytecode=bytecode))
 
         return partial_map
 
+    @staticmethod
+    @Composable
+    def filter[T](func:Callable[[T], bool]) -> Callable[[Queryable[T]], Queryable[T]]:
+        
+        bytecode = list(dis.Bytecode(func))
+
+        @Composable
+        def partial_filter(source:Queryable[T]) -> Queryable[T]:
+            return source.add(Expression(func=ExpressionType.WHERE, bytecode=bytecode))
+
+        return partial_filter
+
+    @staticmethod
+    @Composable
     def list[T](source:Queryable[T]) -> list[T]:
         return list(source().fetchall())
+    

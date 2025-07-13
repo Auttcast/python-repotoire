@@ -1,7 +1,5 @@
 from dataclasses import dataclass
-from auttcomp.extensions import Api
-from auttcomp.composable import Composable
-from ..sqlite import Entity, SqliteRepoApi, SqliteRepotoire, ExpressionApi as q
+from ..sqlite import Entity, SqliteRepotoire, ExpressionApi as q
 
 '''
 from <source>
@@ -32,7 +30,38 @@ def test_queryable():
     class TestRepo(SqliteRepotoire):
         def __init__(self, connection_string):
             super().connect(connection_string)
-            self.my_entity = super().register(lambda: EntityA())
+            self.my_entity = super().register(EntityA)
+
+    repo = TestRepo(":memory:")
+
+    repo.my_entity.add(EntityA(name="foo1", data=123))
+    repo.my_entity.add(EntityA(name="foo2", data=456))
+    
+    comp = repo.my_entity.queryable() | q.list
+
+    actual = comp()
+    e1 = actual[0]
+    e2 = actual[1]
+
+    assert e1.rowid == 1
+    assert e1.name == "foo1"
+    assert e1.data == 123
+
+    assert e2.rowid == 2
+    assert e2.name == "foo2"
+    assert e2.data == 456
+
+def test_queryable_map1():
+
+    @dataclass
+    class EntityA(Entity):
+        name:str = None
+        data:int = None
+    
+    class TestRepo(SqliteRepotoire):
+        def __init__(self, connection_string):
+            super().connect(connection_string)
+            self.my_entity = super().register(EntityA)
 
     repo = TestRepo(":memory:")
 
@@ -40,8 +69,60 @@ def test_queryable():
     repo.my_entity.add(EntityA(name="foo2", data=456))
     
     comp = repo.my_entity.queryable() | q.map(lambda x: x.name) | q.list
-
+    
     actual = comp()
 
     assert actual == ["foo1", "foo2"]
+    
+def test_queryable_map2():
+
+    @dataclass
+    class EntityA(Entity):
+        name:str = None
+        data:int = None
+    
+    class TestRepo(SqliteRepotoire):
+        def __init__(self, connection_string):
+            super().connect(connection_string)
+            self.my_entity = super().register(EntityA)
+
+    repo = TestRepo(":memory:")
+
+    repo.my_entity.add(EntityA(name="foo1", data=123))
+    repo.my_entity.add(EntityA(name="foo2", data=456))
+    
+    comp = repo.my_entity.queryable() | q.map(lambda x: (x.name, x.data)) | q.list
+    
+    actual = comp()
+
+    assert actual == [("foo1", 123), ("foo2", 456)]
+    
+def test_queryable_filter1():
+
+    @dataclass
+    class EntityA(Entity):
+        name:str = None
+        data:int = None
+    
+    class TestRepo(SqliteRepotoire):
+        def __init__(self, connection_string):
+            super().connect(connection_string)
+            self.my_entity = super().register(EntityA)
+
+    repo = TestRepo(":memory:")
+
+    repo.my_entity.add(EntityA(name="foo1", data=123))
+    repo.my_entity.add(EntityA(name="foo2", data=456))
+    
+    comp = repo.my_entity.queryable() | q.filter(lambda x: x.data < 200) | q.list
+    
+    actual = comp()
+
+    e1 = actual[0]
+
+    assert e1.rowid == 1
+    assert e1.name == "foo1"
+    assert e1.data == 123
+
+    assert actual == [e1]
     
