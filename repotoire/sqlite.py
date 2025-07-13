@@ -150,7 +150,8 @@ class QueryBuilder:
             )
         
     def where(self, inst:list[dis.Instruction]):
-        pprint(f"INST: {list(map(lambda x: (x.opname, x.opcode, x.argval), inst))}")
+        print(f"WHERE:::")
+        pprint(list(map(lambda x: (x.opname, x.opcode, x.argval), inst)))
 
         registers = []
 
@@ -165,9 +166,13 @@ class QueryBuilder:
                 left = registers.pop()
                 registers.append(f"{left} {i.argval} {right}")
 
+            if i.opcode == 97:
+                registers.append(" AND ")
+            if i.opcode == 100:
+                registers.append(" OR ")
+
             if i.opcode == 36:
-                assert len(registers) == 1
-                self.filters.append(registers[0])
+                self.filters.append("".join(registers))
                 return
 
         raise SyntaxError("opcode 36 was not found")
@@ -187,7 +192,7 @@ class QueryBuilder:
             return ""
         
         clause = f"WHERE {self.filters[0]}"
-        
+
         return clause
 
     def build(self) -> str:

@@ -126,3 +126,33 @@ def test_queryable_filter1():
 
     assert actual == [e1]
     
+def test_queryable_filter2():
+
+    @dataclass
+    class EntityA(Entity):
+        name:str = None
+        data:int = None
+    
+    class TestRepo(SqliteRepotoire):
+        def __init__(self, connection_string):
+            super().connect(connection_string)
+            self.my_entity = super().register(EntityA)
+
+    repo = TestRepo(":memory:")
+
+    repo.my_entity.add(EntityA(name="foo1", data=123))
+    repo.my_entity.add(EntityA(name="foo2", data=456))
+    repo.my_entity.add(EntityA(name="foo3", data=789))
+    
+    comp = repo.my_entity.queryable() | q.filter(lambda x: x.data > 200 and x.data < 700) | q.list
+    
+    actual = comp()
+
+    e1 = actual[0]
+
+    assert e1.rowid == 2
+    assert e1.name == "foo2"
+    assert e1.data == 456
+
+    assert actual == [e1]
+    
