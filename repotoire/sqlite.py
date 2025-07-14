@@ -134,8 +134,10 @@ class QueryBuilder:
         self.source = source
         self.shape = ['rowid', *shape]
         self.filters = []
+        self.groupby = None
 
     def select(self, inst:list[dis.Instruction]):
+        pprint(list(map(lambda x: (x.opname, x.opcode, x.argval), inst)))
         self.shape = list(
             map(
                 lambda x: x.argval, filter(
@@ -171,8 +173,15 @@ class QueryBuilder:
 
         raise SyntaxError("opcode 36 was not found")
 
-    def group(self):
-        pass
+    def group(self, inst:list[dis.Instruction]):
+        pprint(list(map(lambda x: (x.opname, x.opcode, x.argval), inst)))
+        i = list(
+            map(
+                lambda x: x.argval, filter(
+                    lambda x: x[1] == 82, inst)
+                    )
+            )
+        self.groupby = ", ".join(i)
 
     def order(self):
         pass
@@ -185,15 +194,22 @@ class QueryBuilder:
         if len(self.filters) == 0:
             return ""
         
-        clause = f"WHERE {self.filters[0]}"
+        return f"WHERE {self.filters[0]}"
 
-        return clause
+    def build_groupby(self):
+        
+        if self.groupby is None:
+            return ""
+        
+        return f"GROUP BY {self.groupby}"
+
 
     def build(self) -> str:
         query = f"""
 SELECT {', '.join(self.shape)} 
 FROM [{self.source}]
 {self.build_where()}
+{self.build_groupby()}
         """
         print(f"QUERY: {query}")
         return query
@@ -237,11 +253,16 @@ class SqliteQueryable[T](Queryable[T], Iterable):
         self.api.cursor.row_factory = self.entity_row_factory()
 
         for e in self.expressions:
+
             if e.func == ExpressionType.SELECT:
                 builder.select(e.bytecode)
                 self.api.cursor.row_factory = SqliteQueryable.tuple_row_factory
+
             elif e.func == ExpressionType.WHERE:
                 builder.where(e.bytecode)
+
+            elif e.func == ExpressionType.GROUP:
+                builder.group(e.bytecode)
         
         cursor = self.api.cursor.execute(builder.build()) #cursor
         return cursor
@@ -249,7 +270,7 @@ class SqliteQueryable[T](Queryable[T], Iterable):
 class ExpressionType(Enum):
     SELECT=0,
     WHERE=1,
-    # aggregate
+    GROUP=2
 
 class ExpressionApi:
 
@@ -276,6 +297,18 @@ class ExpressionApi:
             return source.add(Expression(func=ExpressionType.WHERE, bytecode=bytecode))
 
         return partial_filter
+
+    @staticmethod
+    @Composable
+    def group[T, R](func:Callable[[T], R]) -> Callable[[Queryable[T]], Queryable[R]]:
+        
+        bytecode = list(dis.Bytecode(func))
+
+        @Composable
+        def partial_group(source:Queryable[T]) -> Queryable[R]:
+            return source.add(Expression(func=ExpressionType.GROUP, bytecode=bytecode))
+
+        return partial_group
 
     @staticmethod
     @Composable

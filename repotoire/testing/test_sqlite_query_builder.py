@@ -223,3 +223,29 @@ def test_queryable_iter():
     assert e2.rowid == 3
     assert e2.name == "foo3"
     assert e2.data == 789
+
+def test_queryable_group():
+
+    @dataclass
+    class EntityA(Entity):
+        name:str = None
+        data:int = None
+        channel:str = None
+    
+    class TestRepo(SqliteRepotoire):
+        def __init__(self, connection_string):
+            super().connect(connection_string)
+            self.my_entity = super().register(EntityA)
+
+    repo = TestRepo(":memory:")
+
+    repo.my_entity.add(EntityA(name="foo1", data=5, channel='A'))
+    repo.my_entity.add(EntityA(name="foo2", data=5, channel='A'))
+    repo.my_entity.add(EntityA(name="foo3", data=5, channel='A'))
+    repo.my_entity.add(EntityA(name="foo4", data=5, channel='B'))
+    
+    comp = repo.my_entity.queryable() | q.group(lambda x: x.channel) | q.map(lambda x: (x.channel, sum(x.data)) ) | q.list
+    
+    actual = comp()
+
+    print(actual)
